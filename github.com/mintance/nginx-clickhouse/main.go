@@ -1,20 +1,22 @@
 package main
 
 import (
+	"github.com/mintance/nginx-clickhouse/clickhouse"
+	"github.com/mintance/nginx-clickhouse/log_field_mapper"
+	"github.com/satyrius/gonx"
 	"io"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/sirupsen/logrus"
-	"github.com/mintance/nginx-clickhouse/clickhouse"
 	configParser "github.com/mintance/nginx-clickhouse/config"
 	"github.com/mintance/nginx-clickhouse/nginx"
 	"github.com/papertrail/go-tail/follower"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -33,6 +35,28 @@ var (
 	})
 )
 
+func RemapEntryValuesInplace(mapper *log_field_mapper.FieldMapper, entries []gonx.Entry){
+	for _, entry := range entries {
+
+		valueByField := entry.Fields()
+		for field, value := range valueByField {
+			mappedValue, err := mapper.Map(field, value)
+			if err != nil {
+				continue
+			}
+
+			opt := mapper.GetOpts(field)
+			if opt.Style == configParser.MapStyleReplace {
+				valueByField[field] = mappedValue
+			} else if opt.Style == configParser.MapStyleAdd {
+				valueByField[opt.Alias] = mappedValue
+			} else {
+				logrus.Error("Unexpected rule style for ", opt.Style)
+			}
+		}
+	}
+}
+
 func main() {
 
 	// Read config & incoming flags
@@ -42,6 +66,7 @@ func main() {
 	config.SetEnvVariables()
 
 	nginxParser, err := nginx.GetParser(config)
+	fieldMapper := log_field_mapper.NewFieldMapper(config.ClickHouse.Mappings)
 
 	go func() {
 		http.Handle("/metrics", promhttp.Handler())
@@ -79,7 +104,11 @@ func main() {
 
 				logrus.Info("Preparing to save ", len(logs), " new log entries.")
 				locker.Lock()
-				err := clickhouse.Save(config, nginx.ParseLogs(nginxParser, logs))
+
+				logEntries := nginx.ParseLogs(nginxParser, logs)
+				RemapEntryValuesInplace(fieldMapper, logEntries)
+
+				err := clickhouse.Save(config, logEntries)
 
 				if err != nil {
 					logrus.Error("Can`t save logs: ", err)

@@ -18,9 +18,27 @@ clickhouse:
    TimeLocal: time_local
    Request: request
    Status: status
+   StatusGroup: status_group
+   UriGroup: uri_group
    BytesSent: bytes_sent
    HttpReferer: http_referer
    HttpUserAgent: http_user_agent
+ mappings:
+   uri:
+     alias: uri_group
+     style: add
+     rules:
+       /fast/[0-9A-Za-z-]+/bbb: '/fast/*/bbb'
+       /fast/[0-9]+/ccc: '/fast/*/ccc'
+       /fast\?someArg=[0-9]+: '/fast?someArg=*'
+   status:
+     alias: status_group
+     style: add
+     rules:
+       2[0-9][0-9]: '2xx'
+       3[0-9][0-9]: '3xx'
+       4[0-9][0-9]: '4xx'
+       5[0-9][0-9]: '5xx'
 
 # NGINX
 nginx:

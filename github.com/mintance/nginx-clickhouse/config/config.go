@@ -10,6 +10,15 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+const MapStyleAdd = "add"
+const MapStyleReplace = "replace"
+
+type MappingOptions struct {
+	Alias string            `yaml:"alias"`
+	Rules map[string]string `yaml:"rules"`
+	Style string            `yaml:"style"`
+}
+
 type Config struct {
 	Settings struct {
 		Interval    int    `yaml:"interval"`
@@ -26,6 +35,7 @@ type Config struct {
 			User     string `yaml:"user"`
 			Password string `yaml:"password"`
 		} `yaml:"credentials"`
+		Mappings map[string]MappingOptions `yaml:"mappings"`
 	} `yaml:"clickhouse"`
 	Nginx struct {
 		LogType   string `yaml:"log_type"`
@@ -38,12 +48,9 @@ var configPath string
 var NginxTimeLayout = "02/Jan/2006:15:04:05 -0700"
 var CHTimeLayout = "2006-01-02 15:04:05"
 
-func init() {
+func Read() *Config {
 	flag.StringVar(&configPath, "config_path", "config/config.yml", "Config path.")
 	flag.Parse()
-}
-
-func Read() *Config {
 
 	config := Config{}
 
