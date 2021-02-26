@@ -31,7 +31,7 @@ func ParseField(key string, value string) interface{} {
 		t, err := time.Parse(config.NginxTimeLayout, value)
 
 		if err == nil {
-			return t.Format(config.CHTimeLayout)
+			return t.Format(time.RFC3339)
 		}
 
 		return value

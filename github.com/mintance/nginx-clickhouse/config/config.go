@@ -46,7 +46,6 @@ type Config struct {
 var configPath string
 
 var NginxTimeLayout = "02/Jan/2006:15:04:05 -0700"
-var CHTimeLayout = "2006-01-02 15:04:05"
 
 func Read() *Config {
 	flag.StringVar(&configPath, "config_path", "config/config.yml", "Config path.")
